@@ -50,6 +50,17 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'list_vulnerabilities',
+    description: 'List tracked vulnerabilities from the vulnerability history database. Shows new, known, and resolved findings across scans.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        serviceId: { type: 'string', description: 'Filter by service ID' },
+        status: { type: 'string', enum: ['open', 'pr_created', 'resolved'], description: 'Filter by status (omit for all)' },
+      },
+    },
+  },
+  {
     name: 'trigger_check',
     description: 'Trigger an agent check for a service on demand. The check runs asynchronously and will appear in list_runs shortly.',
     input_schema: {
@@ -120,6 +131,12 @@ async function callTool(
         },
       }));
     }
+
+    case 'list_vulnerabilities':
+      return store.listVulnerabilities({
+        serviceId: input.serviceId as string | undefined,
+        status: input.status as 'open' | 'pr_created' | 'resolved' | undefined,
+      });
 
     case 'trigger_check': {
       const { serviceId, checkType } = input as { serviceId: string; checkType: 'health' | 'dependency' | 'security' | 'all' };

@@ -45,3 +45,20 @@ export interface RunEvent {
 }
 
 export type AgentEventCallback = (type: RunEventType, data: Record<string, unknown>) => void;
+
+export type VulnStatus = 'open' | 'pr_created' | 'resolved';
+
+export interface Vulnerability {
+  id: string;
+  serviceId: string;
+  vulnId: string;       // GHSA-xxx or CVE-xxx from advisory URL
+  packageName: string;
+  severity: Severity;
+  title: string;
+  url: string;
+  status: VulnStatus;
+  prUrl?: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  resolvedAt?: string;
+}

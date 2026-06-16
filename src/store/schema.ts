@@ -41,6 +41,28 @@ export const CREATE_RUN_EVENTS_IDX = `
   CREATE INDEX IF NOT EXISTS idx_run_events_run_id ON run_events(run_id, seq)
 `;
 
+export const CREATE_VULNERABILITIES_TABLE = `
+  CREATE TABLE IF NOT EXISTS vulnerabilities (
+    id           TEXT PRIMARY KEY,
+    service_id   TEXT NOT NULL,
+    vuln_id      TEXT NOT NULL,
+    package_name TEXT NOT NULL,
+    severity     TEXT NOT NULL,
+    title        TEXT NOT NULL,
+    url          TEXT NOT NULL,
+    status       TEXT NOT NULL DEFAULT 'open',
+    pr_url       TEXT,
+    first_seen_at TEXT NOT NULL,
+    last_seen_at  TEXT NOT NULL,
+    resolved_at   TEXT
+  )
+`;
+
+export const CREATE_VULNERABILITIES_IDX = `
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_vuln_service_vuln
+  ON vulnerabilities(service_id, vuln_id)
+`;
+
 export const CREATE_SIGNALS_TABLE = `
   CREATE TABLE IF NOT EXISTS signals (
     id          TEXT PRIMARY KEY,

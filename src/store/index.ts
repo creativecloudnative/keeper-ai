@@ -7,8 +7,10 @@ import {
   CREATE_RUN_EVENTS_TABLE,
   CREATE_RUN_EVENTS_IDX,
   CREATE_SIGNALS_TABLE,
+  CREATE_VULNERABILITIES_TABLE,
+  CREATE_VULNERABILITIES_IDX,
 } from './schema';
-import type { Incident, Run, RunEvent, AgentResult, AgentType } from '../shared/types';
+import type { Incident, Run, RunEvent, AgentResult, AgentType, Vulnerability, VulnStatus } from '../shared/types';
 
 let _db: Database.Database | null = null;
 
@@ -22,6 +24,8 @@ function getDb(): Database.Database {
     _db.exec(CREATE_RUN_EVENTS_TABLE);
     _db.exec(CREATE_RUN_EVENTS_IDX);
     _db.exec(CREATE_SIGNALS_TABLE);
+    _db.exec(CREATE_VULNERABILITIES_TABLE);
+    _db.exec(CREATE_VULNERABILITIES_IDX);
   }
   return _db;
 }
@@ -128,6 +132,86 @@ export const store = {
         .all(runId) as Record<string, unknown>[]
     ).map(rowToRunEvent);
   },
+
+  // ── Vulnerabilities ───────────────────────────────────────────────────────────
+
+  upsertVulnerabilities(
+    serviceId: string,
+    findings: Pick<Vulnerability, 'vulnId' | 'packageName' | 'severity' | 'title' | 'url'>[],
+  ): { newIds: Set<string>; knownCount: number } {
+    const now = new Date().toISOString();
+    const newIds = new Set<string>();
+    let knownCount = 0;
+
+    for (const f of findings) {
+      const existing = getDb()
+        .prepare('SELECT id, status FROM vulnerabilities WHERE service_id = ? AND vuln_id = ?')
+        .get(serviceId, f.vulnId) as { id: string; status: string } | undefined;
+
+      if (existing) {
+        getDb()
+          .prepare(
+            `UPDATE vulnerabilities
+             SET last_seen_at = ?, status = CASE WHEN status = 'resolved' THEN 'open' ELSE status END,
+                 resolved_at = CASE WHEN status = 'resolved' THEN NULL ELSE resolved_at END,
+                 severity = ?, title = ?
+             WHERE id = ?`,
+          )
+          .run(now, f.severity, f.title, existing.id);
+        knownCount++;
+      } else {
+        getDb()
+          .prepare(
+            `INSERT INTO vulnerabilities
+             (id, service_id, vuln_id, package_name, severity, title, url, status, first_seen_at, last_seen_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)`,
+          )
+          .run(randomUUID(), serviceId, f.vulnId, f.packageName, f.severity, f.title, f.url, now, now);
+        newIds.add(f.vulnId);
+      }
+    }
+
+    // Mark previously-open vulns absent from this scan as resolved
+    if (findings.length > 0) {
+      const presentIds = findings.map((f) => f.vulnId);
+      const placeholders = presentIds.map(() => '?').join(',');
+      getDb()
+        .prepare(
+          `UPDATE vulnerabilities SET status = 'resolved', resolved_at = ?
+           WHERE service_id = ? AND status != 'resolved' AND vuln_id NOT IN (${placeholders})`,
+        )
+        .run(now, serviceId, ...presentIds);
+    } else {
+      getDb()
+        .prepare(
+          `UPDATE vulnerabilities SET status = 'resolved', resolved_at = ?
+           WHERE service_id = ? AND status != 'resolved'`,
+        )
+        .run(now, serviceId);
+    }
+
+    return { newIds, knownCount };
+  },
+
+  markVulnerabilityPRCreated(serviceId: string, vulnId: string, prUrl: string): void {
+    getDb()
+      .prepare(
+        `UPDATE vulnerabilities SET status = 'pr_created', pr_url = ? WHERE service_id = ? AND vuln_id = ?`,
+      )
+      .run(prUrl, serviceId, vulnId);
+  },
+
+  listVulnerabilities(options: { serviceId?: string; status?: VulnStatus } = {}): Vulnerability[] {
+    let sql = 'SELECT * FROM vulnerabilities';
+    const params: unknown[] = [];
+    const clauses: string[] = [];
+    if (options.serviceId) { clauses.push('service_id = ?'); params.push(options.serviceId); }
+    if (options.status) { clauses.push('status = ?'); params.push(options.status); }
+    if (clauses.length) sql += ' WHERE ' + clauses.join(' AND ');
+    sql += ' ORDER BY first_seen_at DESC';
+    return (getDb().prepare(sql).all(...params) as Record<string, unknown>[]).map(rowToVuln);
+  },
+
 };
 
 // ── Row mappers ────────────────────────────────────────────────────────────────
@@ -168,5 +252,22 @@ function rowToRunEvent(row: Record<string, unknown>): RunEvent {
     data: JSON.parse(row.data as string),
     seq: row.seq as number,
     createdAt: row.created_at as string,
+  };
+}
+
+function rowToVuln(row: Record<string, unknown>): Vulnerability {
+  return {
+    id: row.id as string,
+    serviceId: row.service_id as string,
+    vulnId: row.vuln_id as string,
+    packageName: row.package_name as string,
+    severity: row.severity as Vulnerability['severity'],
+    title: row.title as string,
+    url: row.url as string,
+    status: row.status as VulnStatus,
+    prUrl: (row.pr_url as string | null) ?? undefined,
+    firstSeenAt: row.first_seen_at as string,
+    lastSeenAt: row.last_seen_at as string,
+    resolvedAt: (row.resolved_at as string | null) ?? undefined,
   };
 }
