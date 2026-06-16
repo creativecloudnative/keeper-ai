@@ -19,7 +19,7 @@ async function main() {
   await app.register(cors, { origin: allowedOrigins });
 
   registerSignalRoutes(app, (signal) => orchestrator.handleSignal(signal));
-  registerApiRoutes(app);
+  registerApiRoutes(app, orchestrator);
 
   // Railway sets PORT; KEEPER_PORT is for local dev
   const port = Number(process.env.PORT ?? process.env.KEEPER_PORT ?? 3001);

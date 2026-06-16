@@ -127,6 +127,21 @@ export class Orchestrator {
     }
   }
 
+  async triggerCheck(
+    serviceId: string,
+    checkType: 'health' | 'dependency' | 'security' | 'all',
+    triggeredBy = 'chat'
+  ) {
+    const config = loadConfig();
+    const service = config.services.find((s) => s.id === serviceId);
+    if (!service) throw new Error(`Service not found: ${serviceId}`);
+    const jobs: Promise<AgentResult>[] = [];
+    if (checkType === 'health' || checkType === 'all') jobs.push(this.runHealthCheck(service, triggeredBy));
+    if (checkType === 'dependency' || checkType === 'all') jobs.push(this.runDependencyCheck(service, triggeredBy));
+    if (checkType === 'security' || checkType === 'all') jobs.push(this.runSecurityCheck(service, triggeredBy));
+    await Promise.all(jobs);
+  }
+
   private runHealthCheck(service: ServiceConfig, triggeredBy: string) {
     return this.runWithTracking(service, 'health', triggeredBy, (onEvent) =>
       runHealthAgent(service, onEvent)

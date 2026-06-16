@@ -2,9 +2,12 @@ import type { FastifyInstance } from 'fastify';
 import { loadConfig } from '../config/loader';
 import { store } from '../store';
 import { eventBus } from '../shared/eventBus';
+import { registerChatRoute } from './chat';
+import type { Orchestrator } from '../agents/orchestrator';
 import type { RunEvent } from '../shared/types';
 
-export function registerApiRoutes(app: FastifyInstance) {
+export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrator) {
+  registerChatRoute(app, orchestrator);
   // ── Services ───────────────────────────────────────────────────────────────
 
   app.get('/api/services', async () => {
