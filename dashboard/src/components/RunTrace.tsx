@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import type { RunEvent } from '@/lib/types';
 import { SSE_URL } from '@/lib/api';
 
@@ -128,9 +130,23 @@ function EventBlock({ event }: { event: RunEvent }) {
       return (
         <div className="rounded border border-slate-700 bg-slate-900/50 px-4 py-3">
           <div className="text-slate-500 text-xs mb-2 font-mono">■ AGENT RESPONSE</div>
-          <p className="text-slate-200 whitespace-pre-wrap font-sans text-sm leading-relaxed">
-            {String(event.data.text)}
-          </p>
+          <div className="prose prose-sm prose-invert max-w-none
+            prose-p:text-slate-200 prose-p:leading-relaxed prose-p:my-1
+            prose-headings:text-slate-100 prose-headings:font-semibold
+            prose-h1:text-base prose-h2:text-sm prose-h3:text-sm
+            prose-strong:text-slate-100
+            prose-code:text-emerald-300 prose-code:bg-slate-800 prose-code:px-1 prose-code:rounded prose-code:text-xs prose-code:before:content-none prose-code:after:content-none
+            prose-pre:bg-slate-800 prose-pre:text-xs
+            prose-ul:text-slate-200 prose-ol:text-slate-200
+            prose-li:my-0.5
+            prose-a:text-blue-400
+            prose-blockquote:border-slate-600 prose-blockquote:text-slate-400
+            prose-hr:border-slate-700
+            prose-table:text-sm prose-th:text-slate-300 prose-td:text-slate-300">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {String(event.data.text)}
+            </ReactMarkdown>
+          </div>
         </div>
       );
 
