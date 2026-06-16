@@ -15,7 +15,7 @@ export function Nav() {
     <nav className="w-48 shrink-0 border-r border-[#222] p-6 flex flex-col gap-1 justify-between">
       <div className="flex flex-col gap-1">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.svg" alt="keeper-ai" width={120} height={120} className="mb-4 -ml-2 rounded-xl" />
+        <img src="/logo-300.png" alt="keeper-ai" width={120} height={120} className="mb-4 -ml-2 rounded-xl" />
         {links.map(({ href, label }) => {
           const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
           return (

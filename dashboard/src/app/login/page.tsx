@@ -9,7 +9,7 @@ export default function LoginPage() {
         <div className="text-center space-y-4">
           <div className="flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="keeper-ai" width={120} height={120} className="rounded-2xl" />
+            <img src="/logo-300.png" alt="keeper-ai" width={120} height={120} className="rounded-2xl" />
           </div>
           <div className="space-y-1">
             <h1 className="text-xl font-semibold text-slate-100">Operations Dashboard</h1>
