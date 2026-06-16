@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -14,9 +15,7 @@ export function Nav() {
   return (
     <nav className="w-48 shrink-0 border-r border-[#222] p-6 flex flex-col gap-1 justify-between">
       <div className="flex flex-col gap-1">
-        <span className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-6 block">
-          keeper-ai
-        </span>
+        <Image src="/logo.svg" alt="keeper-ai" width={120} height={120} className="mb-4 -ml-2 rounded-xl" />
         {links.map(({ href, label }) => {
           const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
           return (

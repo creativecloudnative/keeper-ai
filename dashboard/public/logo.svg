@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a1628"/>
+      <stop offset="100%" style="stop-color:#060d1c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="300" height="300" rx="40" ry="40" fill="url(#bg)"/>
+
+  <!-- Text: keeper -->
+  <text
+    x="150"
+    y="163"
+    font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+    font-size="42"
+    font-weight="700"
+    letter-spacing="-1"
+    text-anchor="middle"
+    fill="#ffffff"
+  >keeper<tspan fill="#34d399">-ai</tspan></text>
+</svg>

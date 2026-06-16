@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { signIn } from '@/auth';
 
 export const dynamic = 'force-dynamic';
@@ -6,12 +7,14 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="w-full max-w-sm space-y-8 px-6">
-        <div className="text-center space-y-2">
-          <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">
-            keeper-ai
-          </span>
-          <h1 className="text-xl font-semibold text-slate-100">Operations Dashboard</h1>
-          <p className="text-sm text-slate-500">Sign in to continue</p>
+        <div className="text-center space-y-4">
+          <div className="flex justify-center">
+            <Image src="/logo.svg" alt="keeper-ai" width={120} height={120} className="rounded-2xl" />
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-xl font-semibold text-slate-100">Operations Dashboard</h1>
+            <p className="text-sm text-slate-500">Sign in to continue</p>
+          </div>
         </div>
 
         <form

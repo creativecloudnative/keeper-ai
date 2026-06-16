@@ -5,6 +5,7 @@ import { Nav } from '@/components/Nav';
 export const metadata: Metadata = {
   title: 'keeper-ai',
   description: 'Day-2 operations dashboard',
+  icons: { icon: '/logo.svg' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
