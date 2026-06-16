@@ -1,10 +1,8 @@
 import { signIn } from '@/auth';
 
-export default function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string; callbackUrl?: string }>;
-}) {
+export const dynamic = 'force-dynamic';
+
+export default function LoginPage() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="w-full max-w-sm space-y-8 px-6">
@@ -19,8 +17,7 @@ export default function LoginPage({
         <form
           action={async () => {
             'use server';
-            const { callbackUrl } = await searchParams;
-            await signIn('linkedin', { redirectTo: callbackUrl ?? '/' });
+            await signIn('linkedin', { redirectTo: '/' });
           }}
         >
           <button
