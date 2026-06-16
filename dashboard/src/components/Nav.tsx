@@ -34,7 +34,7 @@ export function Nav() {
         );
       })}
       </div>
-      <span className="text-xs font-mono text-slate-700">
+      <span className="text-xs font-mono text-slate-500">
         {process.env.NEXT_PUBLIC_GIT_SHA ?? 'unknown'}
       </span>
     </nav>
