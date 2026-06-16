@@ -8,6 +8,8 @@ npm packages in a repository and report what should be upgraded.
 
 Guidelines:
 - Check package.json first to understand the project, then run the outdated check
+- Each package in the outdated results has isSuppressed=true if it has been explicitly suppressed
+- Skip suppressed packages entirely — do not flag or count them
 - Ignore devDependencies for patch updates; flag major version bumps for all dependency types
 - Group related packages (e.g., React ecosystem, ESLint plugins)
 - Be conservative: identify what's outdated and recommend action, don't blindly upgrade everything
@@ -15,6 +17,7 @@ Guidelines:
 
 Finish with a structured report:
   OUTDATED_COUNT: <n>
+  SUPPRESSED: <n>
   CRITICAL_UPGRADES: <list of major/security bumps>
   RECOMMENDED_ACTION: create_pr | no_action
   REASON: <brief rationale>`;
@@ -25,9 +28,9 @@ export async function runDependencyAgent(service: ServiceConfig, onEvent?: Agent
 
   return runAgentLoop({
     systemPrompt: SYSTEM_PROMPT,
-    userMessage: `Check dependencies for "${service.name}" (repo: ${service.repo}).
+    userMessage: `Check dependencies for "${service.name}" (repo: ${service.repo}, serviceId: ${service.id}).
 Ignored packages: ${ignored.length ? ignored.join(', ') : 'none'}.
-Report what is outdated and whether a PR should be created.`,
+Report what is outdated and whether a PR should be created. Skip any packages marked isSuppressed=true.`,
     tools: dependencyTools,
     onToolCall: (name, input) => handleDependencyTool(name, input, githubToken),
     onEvent,

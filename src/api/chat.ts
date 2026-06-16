@@ -76,6 +76,43 @@ const TOOLS: Anthropic.Tool[] = [
       required: ['serviceId', 'checkType'],
     },
   },
+  {
+    name: 'list_suppressions',
+    description: 'List known-issue suppressions — vulnerabilities or packages that agents have been told to skip.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        serviceId: { type: 'string', description: 'Filter by service ID' },
+        type: { type: 'string', enum: ['vuln', 'dependency', 'health'], description: 'Filter by suppression type' },
+      },
+    },
+  },
+  {
+    name: 'add_suppression',
+    description: 'Tell agents to skip a known issue or exception. Use type=vuln for a GHSA/CVE ID, type=dependency for a package name, type=health for an endpoint pattern.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        serviceId: { type: 'string', description: 'Service ID this suppression applies to' },
+        type: { type: 'string', enum: ['vuln', 'dependency', 'health'], description: 'Suppression type' },
+        key: { type: 'string', description: 'The exact vuln ID (e.g. GHSA-xxxx-yyyy-zzzz), package name, or endpoint' },
+        reason: { type: 'string', description: 'Why this is being suppressed (required — used in audit trail)' },
+        expiresAt: { type: 'string', description: 'Optional ISO date when suppression expires, e.g. 2026-12-31' },
+      },
+      required: ['serviceId', 'type', 'key', 'reason'],
+    },
+  },
+  {
+    name: 'delete_suppression',
+    description: 'Remove a suppression so agents will act on that issue again.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'Suppression ID to remove (get from list_suppressions)' },
+      },
+      required: ['id'],
+    },
+  },
 ];
 
 function systemPrompt(): string {
@@ -145,6 +182,25 @@ async function callTool(
         .catch((err) => logger.error({ err, serviceId, checkType }, 'Chat-triggered check failed'));
       return { triggered: true, serviceId, checkType };
     }
+
+    case 'list_suppressions':
+      return store.listSuppressions({
+        serviceId: input.serviceId as string | undefined,
+        type: input.type as 'vuln' | 'dependency' | 'health' | undefined,
+      });
+
+    case 'add_suppression':
+      return store.createSuppression({
+        serviceId: input.serviceId as string,
+        type: input.type as 'vuln' | 'dependency' | 'health',
+        key: input.key as string,
+        reason: input.reason as string,
+        expiresAt: input.expiresAt as string | undefined,
+      });
+
+    case 'delete_suppression':
+      store.deleteSuppression(input.id as string);
+      return { deleted: true, id: input.id };
 
     default:
       return { error: `Unknown tool: ${name}` };

@@ -48,6 +48,18 @@ export type AgentEventCallback = (type: RunEventType, data: Record<string, unkno
 
 export type VulnStatus = 'open' | 'pr_created' | 'resolved';
 
+export type SuppressionType = 'vuln' | 'dependency' | 'health';
+
+export interface Suppression {
+  id: string;
+  serviceId: string;
+  type: SuppressionType;
+  key: string;        // vuln_id, package name, or endpoint pattern
+  reason: string;
+  expiresAt?: string;
+  createdAt: string;
+}
+
 export interface Vulnerability {
   id: string;
   serviceId: string;

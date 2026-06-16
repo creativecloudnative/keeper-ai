@@ -3,6 +3,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { store } from '../../store';
 
 export const dependencyTools: Anthropic.Tool[] = [
   {
@@ -17,11 +18,14 @@ export const dependencyTools: Anthropic.Tool[] = [
   {
     name: 'check_npm_outdated',
     description:
-      'Clone a repo and run `npm outdated --json` to identify outdated packages. Returns a JSON object keyed by package name.',
+      'Clone a repo and run `npm outdated --json` to identify outdated packages. Returns packages keyed by name, each annotated with isSuppressed if a suppression exists for it.',
     input_schema: {
       type: 'object' as const,
-      properties: { repo: { type: 'string', description: 'owner/name' } },
-      required: ['repo'],
+      properties: {
+        repo: { type: 'string', description: 'owner/name' },
+        serviceId: { type: 'string', description: 'keeper-ai service ID for suppression lookup' },
+      },
+      required: ['repo', 'serviceId'],
     },
   },
 ];
@@ -31,7 +35,7 @@ export async function handleDependencyTool(
   input: unknown,
   githubToken: string
 ): Promise<unknown> {
-  const { repo } = input as { repo: string };
+  const { repo, serviceId } = input as { repo: string; serviceId?: string };
 
   switch (name) {
     case 'read_package_json': {
@@ -57,15 +61,28 @@ export async function handleDependencyTool(
           stdio: 'pipe',
           timeout: 120_000,
         });
+        let outdated: Record<string, unknown>;
         try {
-          return JSON.parse(execSync('npm outdated --json', { cwd: tmpDir }).toString());
+          outdated = JSON.parse(execSync('npm outdated --json', { cwd: tmpDir }).toString());
         } catch (err: unknown) {
           // npm outdated exits 1 when packages are outdated; stdout still has the JSON
           if (err && typeof err === 'object' && 'stdout' in err) {
-            return JSON.parse((err as { stdout: Buffer }).stdout.toString());
+            outdated = JSON.parse((err as { stdout: Buffer }).stdout.toString());
+          } else {
+            throw err;
           }
-          throw err;
         }
+
+        // Annotate each package with suppression status
+        if (serviceId) {
+          return Object.fromEntries(
+            Object.entries(outdated).map(([pkg, info]) => [
+              pkg,
+              { ...(info as Record<string, unknown>), isSuppressed: store.isSuppressed(serviceId, 'dependency', pkg) },
+            ]),
+          );
+        }
+        return outdated;
       } finally {
         fs.rmSync(tmpDir, { recursive: true, force: true });
       }

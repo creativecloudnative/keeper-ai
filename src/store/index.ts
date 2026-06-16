@@ -9,8 +9,10 @@ import {
   CREATE_SIGNALS_TABLE,
   CREATE_VULNERABILITIES_TABLE,
   CREATE_VULNERABILITIES_IDX,
+  CREATE_SUPPRESSIONS_TABLE,
+  CREATE_SUPPRESSIONS_IDX,
 } from './schema';
-import type { Incident, Run, RunEvent, AgentResult, AgentType, Vulnerability, VulnStatus } from '../shared/types';
+import type { Incident, Run, RunEvent, AgentResult, AgentType, Vulnerability, VulnStatus, Suppression, SuppressionType } from '../shared/types';
 
 let _db: Database.Database | null = null;
 
@@ -26,6 +28,8 @@ function getDb(): Database.Database {
     _db.exec(CREATE_SIGNALS_TABLE);
     _db.exec(CREATE_VULNERABILITIES_TABLE);
     _db.exec(CREATE_VULNERABILITIES_IDX);
+    _db.exec(CREATE_SUPPRESSIONS_TABLE);
+    _db.exec(CREATE_SUPPRESSIONS_IDX);
   }
   return _db;
 }
@@ -212,6 +216,46 @@ export const store = {
     return (getDb().prepare(sql).all(...params) as Record<string, unknown>[]).map(rowToVuln);
   },
 
+  // ── Suppressions ──────────────────────────────────────────────────────────────
+
+  createSuppression(params: Omit<Suppression, 'id' | 'createdAt'>): Suppression {
+    const s: Suppression = { id: randomUUID(), createdAt: new Date().toISOString(), ...params };
+    getDb()
+      .prepare(
+        `INSERT OR REPLACE INTO suppressions (id, service_id, type, key, reason, expires_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(s.id, s.serviceId, s.type, s.key, s.reason, s.expiresAt ?? null, s.createdAt);
+    return s;
+  },
+
+  deleteSuppression(id: string): void {
+    getDb().prepare('DELETE FROM suppressions WHERE id = ?').run(id);
+  },
+
+  isSuppressed(serviceId: string, type: SuppressionType, key: string): boolean {
+    const now = new Date().toISOString();
+    const row = getDb()
+      .prepare(
+        `SELECT id FROM suppressions
+         WHERE service_id = ? AND type = ? AND key = ?
+         AND (expires_at IS NULL OR expires_at > ?)`,
+      )
+      .get(serviceId, type, key, now);
+    return !!row;
+  },
+
+  listSuppressions(options: { serviceId?: string; type?: SuppressionType } = {}): Suppression[] {
+    let sql = 'SELECT * FROM suppressions';
+    const params: unknown[] = [];
+    const clauses: string[] = [];
+    if (options.serviceId) { clauses.push('service_id = ?'); params.push(options.serviceId); }
+    if (options.type) { clauses.push('type = ?'); params.push(options.type); }
+    if (clauses.length) sql += ' WHERE ' + clauses.join(' AND ');
+    sql += ' ORDER BY created_at DESC';
+    return (getDb().prepare(sql).all(...params) as Record<string, unknown>[]).map(rowToSuppression);
+  },
+
 };
 
 // ── Row mappers ────────────────────────────────────────────────────────────────
@@ -269,5 +313,17 @@ function rowToVuln(row: Record<string, unknown>): Vulnerability {
     firstSeenAt: row.first_seen_at as string,
     lastSeenAt: row.last_seen_at as string,
     resolvedAt: (row.resolved_at as string | null) ?? undefined,
+  };
+}
+
+function rowToSuppression(row: Record<string, unknown>): Suppression {
+  return {
+    id: row.id as string,
+    serviceId: row.service_id as string,
+    type: row.type as SuppressionType,
+    key: row.key as string,
+    reason: row.reason as string,
+    expiresAt: (row.expires_at as string | null) ?? undefined,
+    createdAt: row.created_at as string,
   };
 }

@@ -119,7 +119,11 @@ export async function handleSecurityTool(
             totalFound: findings.length,
             newFindings: newIds.size,
             knownFindings: knownCount,
-            findings: findings.map((f) => ({ ...f, isNew: newIds.has(f.vulnId) })),
+            findings: findings.map((f) => ({
+              ...f,
+              isNew: newIds.has(f.vulnId),
+              isSuppressed: store.isSuppressed(serviceId, 'vuln', f.vulnId),
+            })),
           },
         };
       } finally {

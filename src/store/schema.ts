@@ -63,6 +63,23 @@ export const CREATE_VULNERABILITIES_IDX = `
   ON vulnerabilities(service_id, vuln_id)
 `;
 
+export const CREATE_SUPPRESSIONS_TABLE = `
+  CREATE TABLE IF NOT EXISTS suppressions (
+    id         TEXT PRIMARY KEY,
+    service_id TEXT NOT NULL,
+    type       TEXT NOT NULL CHECK(type IN ('vuln','dependency','health')),
+    key        TEXT NOT NULL,
+    reason     TEXT NOT NULL,
+    expires_at TEXT,
+    created_at TEXT NOT NULL
+  )
+`;
+
+export const CREATE_SUPPRESSIONS_IDX = `
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_suppressions_service_type_key
+  ON suppressions(service_id, type, key)
+`;
+
 export const CREATE_SIGNALS_TABLE = `
   CREATE TABLE IF NOT EXISTS signals (
     id          TEXT PRIMARY KEY,
