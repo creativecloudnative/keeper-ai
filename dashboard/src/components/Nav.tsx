@@ -7,7 +7,6 @@ const links = [
   { href: '/', label: 'Overview' },
   { href: '/runs', label: 'Runs' },
   { href: '/incidents', label: 'Incidents' },
-  { href: '/chat', label: 'Assistant' },
 ];
 
 export function Nav() {

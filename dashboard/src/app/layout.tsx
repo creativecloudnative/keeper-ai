@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Nav } from '@/components/Nav';
+import { ChatPanel } from '@/components/ChatPanel';
 
 export const metadata: Metadata = {
   title: 'keeper-ai',
@@ -14,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="h-full flex">
         <Nav />
         <main className="flex-1 overflow-y-auto p-8">{children}</main>
+        <ChatPanel />
       </body>
     </html>
   );
