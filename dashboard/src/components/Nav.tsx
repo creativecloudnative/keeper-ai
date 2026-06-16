@@ -12,8 +12,9 @@ const links = [
 export function Nav() {
   const pathname = usePathname();
   return (
-    <nav className="w-48 shrink-0 border-r border-[#222] p-6 flex flex-col gap-1">
-      <span className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-6">
+    <nav className="w-48 shrink-0 border-r border-[#222] p-6 flex flex-col gap-1 justify-between">
+      <div>
+      <span className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-6 block">
         keeper-ai
       </span>
       {links.map(({ href, label }) => {
@@ -32,6 +33,10 @@ export function Nav() {
           </Link>
         );
       })}
+      </div>
+      <span className="text-xs font-mono text-slate-700">
+        {process.env.NEXT_PUBLIC_GIT_SHA ?? 'unknown'}
+      </span>
     </nav>
   );
 }
