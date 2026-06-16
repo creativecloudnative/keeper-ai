@@ -1,0 +1,10 @@
+node_modules/
+dist/
+keeper.db
+keeper.db-shm
+keeper.db-wal
+.env
+dashboard/node_modules/
+dashboard/.next/
+dashboard/.env.local
+dashboard/tsconfig.tsbuildinfo
