@@ -18,5 +18,6 @@ export default auth((req: NextAuthRequest) => {
 });
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/auth).*)'],
+  // Exclude Next.js internals, auth routes, and any public static files (extensions)
+  matcher: ['/((?!_next/static|_next/image|api/auth|.*\\.(?:png|jpg|jpeg|svg|ico|webp|gif|woff2?|ttf|otf|css|js)$).*)'],
 };
