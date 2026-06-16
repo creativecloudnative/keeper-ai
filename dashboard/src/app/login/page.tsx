@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import { signIn } from '@/auth';
 
 export const dynamic = 'force-dynamic';
@@ -9,7 +8,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-8 px-6">
         <div className="text-center space-y-4">
           <div className="flex justify-center">
-            <Image src="/logo.svg" alt="keeper-ai" width={120} height={120} className="rounded-2xl" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="keeper-ai" width={120} height={120} className="rounded-2xl" />
           </div>
           <div className="space-y-1">
             <h1 className="text-xl font-semibold text-slate-100">Operations Dashboard</h1>
