@@ -1,7 +1,7 @@
 import { runAgentLoop } from '../base';
 import { prTools, handlePRTool } from './tools';
 import type { ServiceConfig } from '../../config/schema';
-import type { AgentResult } from '../../shared/types';
+import type { AgentResult, AgentEventCallback } from '../../shared/types';
 
 const SYSTEM_PROMPT = `You are a pull request agent. Your job is to create well-structured
 GitHub PRs for proposed changes.
@@ -22,10 +22,11 @@ export interface CreatePRParams {
   body: string;
   headBranch: string;
   type: PRType;
+  onEvent?: AgentEventCallback;
 }
 
 export async function runPRAgent(params: CreatePRParams): Promise<AgentResult> {
-  const { service, title, body, headBranch, type } = params;
+  const { service, title, body, headBranch, type, onEvent } = params;
   const pr = service.pr;
 
   return runAgentLoop({
@@ -46,5 +47,6 @@ ${body}
 Create the PR now.`,
     tools: prTools,
     onToolCall: handlePRTool,
+    onEvent,
   });
 }

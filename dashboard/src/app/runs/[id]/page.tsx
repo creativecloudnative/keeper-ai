@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { StatusBadge } from '@/components/StatusBadge';
 import { RunTrace } from '@/components/RunTrace';
+import { AgentPipeline } from '@/components/AgentPipeline';
 
 function duration(start: string, end?: string) {
   if (!end) return null;
@@ -12,12 +13,31 @@ function duration(start: string, end?: string) {
   return `${Math.floor(ms / 60_000)}m ${Math.round((ms % 60_000) / 1000)}s`;
 }
 
+const PIPELINE_AGENTS = new Set(['security', 'dependency', 'health']);
+
 export default async function RunDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const run = await api.getRun(id).catch(() => null);
   if (!run) notFound();
 
   const isLive = run.status === 'running';
+  const hasPipeline = PIPELINE_AGENTS.has(run.agentType);
+
+  // Fetch recent runs for the same service to find related pipeline runs
+  const relatedRuns = hasPipeline
+    ? await api.getRuns({ serviceId: run.serviceId, limit: 20 })
+        .then((runs) => {
+          // Related = same triggeredBy, started within 10 minutes of this run, different agentType
+          const runStart = new Date(run.startedAt).getTime();
+          return runs.filter(
+            (r) =>
+              r.id !== run.id &&
+              r.triggeredBy === run.triggeredBy &&
+              Math.abs(new Date(r.startedAt).getTime() - runStart) < 10 * 60 * 1000,
+          );
+        })
+        .catch(() => [])
+    : [];
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -46,6 +66,11 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
           )}
         </div>
       </div>
+
+      {/* Agent pipeline */}
+      {hasPipeline && (
+        <AgentPipeline currentRun={run} relatedRuns={relatedRuns} />
+      )}
 
       {/* Result summary (if complete) */}
       {run.result && (

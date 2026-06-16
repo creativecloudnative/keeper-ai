@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { StatusBadge } from '@/components/StatusBadge';
+import { TriggerControls } from '@/components/TriggerControls';
+import { LiveRunsList } from '@/components/LiveRunsList';
 import type { Service, Run } from '@/lib/types';
 
 function serviceHealthStatus(service: Service): string {
@@ -76,6 +78,7 @@ export default async function OverviewPage() {
                     );
                   })}
                 </div>
+                <TriggerControls serviceId={svc.id} />
               </div>
             );
           })}
@@ -105,32 +108,13 @@ export default async function OverviewPage() {
         </section>
       )}
 
-      {/* Recent runs */}
+      {/* Recent runs — live */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xs font-mono text-slate-500 uppercase tracking-widest">Recent Runs</h2>
           <Link href="/runs" className="text-xs text-slate-500 hover:text-slate-300">view all →</Link>
         </div>
-        <div className="rounded-lg border border-[#222] bg-[#111] divide-y divide-[#1e1e1e]">
-          {runs.length === 0 && (
-            <p className="text-slate-500 text-sm px-4 py-4">No runs yet — trigger one via the signals API.</p>
-          )}
-          {runs.map((run) => (
-            <Link
-              key={run.id}
-              href={`/runs/${run.id}`}
-              className="flex items-center gap-4 px-4 py-3 hover:bg-white/[0.02] transition-colors"
-            >
-              <span className={`w-2 h-2 rounded-full shrink-0 ${agentDot(run.agentType)}`} />
-              <span className="text-slate-400 text-sm w-24 shrink-0">{run.agentType}</span>
-              <span className="text-slate-300 text-sm flex-1">{run.serviceId}</span>
-              <StatusBadge value={run.status} />
-              <span className="text-slate-600 text-xs w-16 text-right shrink-0">
-                {relativeTime(run.startedAt)}
-              </span>
-            </Link>
-          ))}
-        </div>
+        <LiveRunsList initialRuns={runs} limit={10} compact />
       </section>
     </div>
   );

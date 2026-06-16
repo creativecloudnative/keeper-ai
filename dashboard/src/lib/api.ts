@@ -24,6 +24,13 @@ export const api = {
   },
   resolveIncident: (id: string) =>
     fetch(`${BASE}/api/incidents/${id}/resolve`, { method: 'POST' }).then((r) => r.json()),
+
+  triggerCheck: (serviceId: string, checkType: 'health' | 'dependency' | 'security' | 'all') =>
+    fetch(`${BASE}/api/trigger`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serviceId, checkType }),
+    }).then((r) => r.json()) as Promise<{ triggered: boolean; serviceId: string; checkType: string }>,
 };
 
 export const SSE_URL = `${BASE}/api/events`;

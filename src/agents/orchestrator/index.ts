@@ -1,5 +1,4 @@
 import cron from 'node-cron';
-import { randomUUID } from 'crypto';
 import { logger } from '../../shared/logger';
 import { loadConfig } from '../../config/loader';
 import { store } from '../../store';
@@ -7,9 +6,16 @@ import { eventBus } from '../../shared/eventBus';
 import { runDependencyAgent } from '../dependency';
 import { runSecurityAgent } from '../security';
 import { runHealthAgent } from '../health';
+import { runRemediation } from '../remediation';
+import { runPRAgent } from '../pr';
 import type { Signal } from '../../signals/types';
 import type { ServiceConfig } from '../../config/schema';
-import type { AgentResult, AgentEventCallback, RunEventType } from '../../shared/types';
+import type { AgentResult, AgentEventCallback, RunEventType, AgentType } from '../../shared/types';
+
+function parseRecommendedAction(summary: string): 'create_pr' | 'no_action' | 'monitor' | null {
+  const match = summary.match(/RECOMMENDED_ACTION:\s*(create_pr|no_action|monitor)/);
+  return (match?.[1] as 'create_pr' | 'no_action' | 'monitor') ?? null;
+}
 
 export class Orchestrator {
   private tasks: cron.ScheduledTask[] = [];
@@ -96,7 +102,7 @@ export class Orchestrator {
 
   private async runWithTracking(
     service: ServiceConfig,
-    agentType: 'health' | 'dependency' | 'security',
+    agentType: AgentType,
     triggeredBy: string,
     fn: (onEvent: AgentEventCallback) => Promise<AgentResult>
   ) {
@@ -148,15 +154,93 @@ export class Orchestrator {
     );
   }
 
-  private runDependencyCheck(service: ServiceConfig, triggeredBy: string) {
-    return this.runWithTracking(service, 'dependency', triggeredBy, (onEvent) =>
+  private async runDependencyCheck(service: ServiceConfig, triggeredBy: string) {
+    const result = await this.runWithTracking(service, 'dependency', triggeredBy, (onEvent) =>
       runDependencyAgent(service, onEvent)
     );
+
+    if (result.success && parseRecommendedAction(result.summary) === 'create_pr') {
+      await this.remediateAndPR(service, 'dependency', triggeredBy, result.summary);
+    }
+
+    return result;
   }
 
-  private runSecurityCheck(service: ServiceConfig, triggeredBy: string) {
-    return this.runWithTracking(service, 'security', triggeredBy, (onEvent) =>
+  private async runSecurityCheck(service: ServiceConfig, triggeredBy: string) {
+    const result = await this.runWithTracking(service, 'security', triggeredBy, (onEvent) =>
       runSecurityAgent(service, onEvent)
     );
+
+    if (result.success && parseRecommendedAction(result.summary) === 'create_pr') {
+      await this.remediateAndPR(service, 'security', triggeredBy, result.summary);
+    }
+
+    return result;
+  }
+
+  private async remediateAndPR(
+    service: ServiceConfig,
+    type: 'dependency' | 'security',
+    triggeredBy: string,
+    agentSummary: string,
+  ) {
+    logger.info({ serviceId: service.id, type }, 'Starting remediation');
+
+    let remediation: Awaited<ReturnType<typeof runRemediation>>;
+    try {
+      remediation = await runRemediation(service, type);
+    } catch (err) {
+      logger.error({ err, serviceId: service.id, type }, 'Remediation failed — skipping PR');
+      return;
+    }
+
+    if (!remediation) return;
+
+    const date = new Date().toISOString().slice(0, 10);
+    const title = type === 'security'
+      ? `security: npm audit fix (${date})`
+      : `chore: update npm dependencies (${date})`;
+
+    const body = [
+      '## Summary',
+      type === 'security'
+        ? '`npm audit fix` applied by keeper-ai to address known vulnerabilities.'
+        : '`npm update` applied by keeper-ai to update outdated dependencies within semver ranges.',
+      '',
+      '## Files Changed',
+      remediation.changedFiles.map((f) => `- \`${f}\``).join('\n'),
+      '',
+      '## Agent Analysis',
+      '```',
+      agentSummary.slice(-2000),
+      '```',
+      '',
+      '---',
+      '_Created automatically by keeper-ai_',
+    ].join('\n');
+
+    const prResult = await this.runWithTracking(service, 'pr', triggeredBy, (onEvent) =>
+      runPRAgent({
+        service,
+        title,
+        body,
+        headBranch: remediation!.branchName,
+        type: type === 'security' ? 'security' : 'dependency',
+        onEvent,
+      })
+    );
+
+    if (prResult.success && type === 'security') {
+      const prUrlMatch = prResult.summary.match(/https:\/\/github\.com\/[^\s)]+\/pull\/\d+/);
+      const prUrl = prUrlMatch?.[0] ?? '';
+      const openVulns = store.listVulnerabilities({ serviceId: service.id, status: 'open' });
+      for (const v of openVulns) {
+        store.markVulnerabilityPRCreated(service.id, v.vulnId, prUrl);
+      }
+      logger.info(
+        { serviceId: service.id, prUrl, vulnCount: openVulns.length },
+        'Vulnerabilities marked as pr_created',
+      );
+    }
   }
 }

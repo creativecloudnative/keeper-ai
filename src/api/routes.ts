@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { loadConfig } from '../config/loader';
 import { store } from '../store';
 import { eventBus } from '../shared/eventBus';
+import { logger } from '../shared/logger';
 import { registerChatRoute } from './chat';
 import type { Orchestrator } from '../agents/orchestrator';
 import type { RunEvent } from '../shared/types';
@@ -52,6 +53,19 @@ export function registerApiRoutes(app: FastifyInstance, orchestrator: Orchestrat
   app.post<{ Params: { id: string } }>('/api/incidents/:id/resolve', async (req) => {
     store.resolveIncident(req.params.id);
     return { success: true };
+  });
+
+  // ── Trigger ────────────────────────────────────────────────────────────────
+
+  app.post<{
+    Body: { serviceId: string; checkType: 'health' | 'dependency' | 'security' | 'all' };
+  }>('/api/trigger', async (req, reply) => {
+    const { serviceId, checkType } = req.body;
+    if (!serviceId || !checkType) return reply.status(400).send({ error: 'serviceId and checkType required' });
+    orchestrator
+      .triggerCheck(serviceId, checkType, 'dashboard')
+      .catch((err: unknown) => logger.error({ err, serviceId, checkType }, 'Dashboard-triggered check failed'));
+    return { triggered: true, serviceId, checkType };
   });
 
   // ── SSE — live event stream ────────────────────────────────────────────────
