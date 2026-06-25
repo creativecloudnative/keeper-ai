@@ -97,7 +97,16 @@ export async function handleSecurityTool(
           `git clone --depth=1 https://${githubToken}@github.com/${repo}.git ${tmpDir}`,
           { stdio: 'pipe', timeout: 60_000 }
         );
-        execSync('npm install --ignore-scripts', { cwd: tmpDir, stdio: 'pipe', timeout: 120_000 });
+
+        // If no lock file exists in the repo, generate one without downloading packages
+        const lockFile = path.join(tmpDir, 'package-lock.json');
+        if (!fs.existsSync(lockFile)) {
+          execSync('npm install --package-lock-only --ignore-scripts', {
+            cwd: tmpDir,
+            stdio: 'pipe',
+            timeout: 60_000,
+          });
+        }
 
         let auditResult: Record<string, unknown>;
         try {
